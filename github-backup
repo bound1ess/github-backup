@@ -47,7 +47,7 @@ function getUserRepos($user)
     }, $result);
 }
 
-function downloadArchive($user, $repoName, $saveTo)
+function downloadArchive($user, $repoName, $saveTo, $unpack = false)
 {
     $url = sprintf(
         'https://github.com/%s/%s/archive/master.zip',
@@ -59,10 +59,16 @@ function downloadArchive($user, $repoName, $saveTo)
         return false;
     }
 
-    return (boolean) file_put_contents(
-        sprintf('%s/%s.zip', $saveTo, $repoName),
+    $result = (boolean) file_put_contents(
+        $path = sprintf('%s/%s.zip', $saveTo, $repoName),
         $contents
     );
+
+    if ( ! $unpack) {
+        return $result;
+    }
+
+    return unpackArchive($path) && unlink($path);
 }
 
 function getUsername($argv)
@@ -104,6 +110,29 @@ function createDirIfAbsent($argv)
     return mkdir($path);
 }
 
+function shouldUnpack($argv)
+{
+    if (count($argv) < 4) {
+        return false;
+    }
+
+    return trim($argv[3]) == 'unpack';
+}
+
+function unpackArchive($path)
+{
+    $archive = new ZipArchive;
+
+    if ($archive->open($path)) {
+        $archive->extractTo(dirname($path));
+        $archive->close();
+
+        return true;
+    }
+
+    return false;
+}
+
 function makeBackup($argv)
 {
     if ( ! $username = getUsername($argv)) {
@@ -127,7 +156,7 @@ function makeBackup($argv)
     foreach ($repos as $repoName) {
         printf('Downloading %s...', $repoName);
 
-        if (downloadArchive($username, $repoName, $path)) {
+        if (downloadArchive($username, $repoName, $path, shouldUnpack($argv))) {
             echo ' Done.', PHP_EOL;
         } else {
             echo ' Failed.', PHP_EOL;
@@ -136,8 +165,8 @@ function makeBackup($argv)
     }
 }
 
-error_reporting(E_ALL);
-ini_set('display_errors', true);
+//error_reporting(E_ALL);
+//ini_set('display_errors', true);
 set_time_limit(0);
 
 makeBackup($argv);
