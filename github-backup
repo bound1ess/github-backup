@@ -1,9 +1,28 @@
 #!/usr/bin/env php
 <?php
 
-function retrieveJson($url)
+function callGithubApi($url, $username, $password = null)
 {
-    $contents = file_get_contents($url);
+    if ( ! $password) {
+        $password = readline('Please enter your GitHub password: ');
+    }
+
+    $handler = curl_init();
+
+    curl_setopt($handler, CURLOPT_URL, $url);
+    curl_setopt($handler, CURLOPT_USERPWD, sprintf('%s:%s', $username, $password));
+    curl_setopt($handler, CURLOPT_HEADER, false);
+    curl_setopt($handler, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt(
+        $handler,
+        CURLOPT_USERAGENT,
+        ('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)' .
+        ' Chrome/40.0.2214.111 Safari/537.36')
+    );
+
+    $contents = curl_exec($handler);
+
+    curl_close($handler);
 
     if ( ! $contents) {
         return null;
@@ -14,10 +33,18 @@ function retrieveJson($url)
 
 function getUserRepos($user)
 {
-    return retrieveJson(sprintf(
+    $result = callGithubApi(sprintf(
         'https://api.github.com/users/%s/repos?type=owner',
         urlencode($user)
-    ));
+    ), $user);
+
+    if (array_key_exists('message', $result)) {
+        return null;
+    }
+
+    return array_map(function ($row) {
+        return $row['name'];
+    }, $result);
 }
 
 function getUsername($argv)
@@ -44,7 +71,11 @@ function makeBackup($argv)
     printf('Downloading repos owned by @%s.%s', $username, PHP_EOL);
 
     if ( ! $repos = getUserRepos($username)) {
-        die('User does not exist.' . PHP_EOL);
+        die('User does not exist or wrong credentials.' . PHP_EOL);
+    }
+
+    foreach ($repos as $repoName) {
+        echo $repoName, PHP_EOL;
     }
 }
 
