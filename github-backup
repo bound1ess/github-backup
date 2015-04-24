@@ -14,7 +14,7 @@ function retrieveJson($url)
 
 function getUserRepos($user)
 {
-    return retrieveTasks(sprintf(
+    return retrieveJson(sprintf(
         'https://api.github.com/users/%s/repos?type=owner',
         urlencode($user)
     ));
@@ -42,6 +42,10 @@ function makeBackup($argv)
     }
 
     printf('Downloading repos owned by @%s.%s', $username, PHP_EOL);
+
+    if ( ! $repos = getUserRepos($username)) {
+        die('User does not exist.' . PHP_EOL);
+    }
 }
 
 error_reporting(E_ALL);
