@@ -1,0 +1,51 @@
+#!/usr/bin/env php
+<?php
+
+function retrieveJson($url)
+{
+    $contents = file_get_contents($url);
+
+    if ( ! $contents) {
+        return null;
+    }
+
+    return json_decode($contents, true);
+}
+
+function getUserRepos($user)
+{
+    return retrieveTasks(sprintf(
+        'https://api.github.com/users/%s/repos?type=owner',
+        urlencode($user)
+    ));
+}
+
+function getUsername($argv)
+{
+    if (count($argv) < 2) {
+        return null;
+    }
+
+    $username = trim($argv[1]);
+
+    if (strpos($username, '@') === 0) {
+        $username = substr($username, 1);
+    }
+
+    return $username;
+}
+
+function makeBackup($argv)
+{
+    if ( ! $username = getUsername($argv)) {
+        die('No username given.' . PHP_EOL);
+    }
+
+    printf('Downloading repos owned by @%s.%s', $username, PHP_EOL);
+}
+
+error_reporting(E_ALL);
+ini_set('display_errors', true);
+set_time_limit(0);
+
+makeBackup($argv);
