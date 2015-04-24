@@ -47,6 +47,24 @@ function getUserRepos($user)
     }, $result);
 }
 
+function downloadArchive($user, $repoName, $saveTo)
+{
+    $url = sprintf(
+        'https://github.com/%s/%s/archive/master.zip',
+        urlencode($user),
+        urlencode($repoName)
+    );
+
+    if ( ! $contents = file_get_contents($url)) {
+        return false;
+    }
+
+    return (boolean) file_put_contents(
+        sprintf('%s/%s.zip', $saveTo, $repoName),
+        $contents
+    );
+}
+
 function getUsername($argv)
 {
     if (count($argv) < 2) {
@@ -62,6 +80,30 @@ function getUsername($argv)
     return $username;
 }
 
+function getDirName($argv)
+{
+    if (count($argv) < 3) {
+        return false;
+    }
+
+    return trim($argv[2]);
+}
+
+function createDirIfAbsent($argv)
+{
+    if ( ! $name = getDirName($argv)) {
+        return false;
+    }
+
+    $path = getcwd() . '/' . $name;
+
+    if (is_readable($path) && is_dir($path)) {
+        return true;
+    }
+
+    return mkdir($path);
+}
+
 function makeBackup($argv)
 {
     if ( ! $username = getUsername($argv)) {
@@ -74,8 +116,23 @@ function makeBackup($argv)
         die('User does not exist or wrong credentials.' . PHP_EOL);
     }
 
+    if ( ! createDirIfAbsent($argv)) {
+        die('Not enough arguments or cannot create a directory.' . PHP_EOL);
+    }
+
+    printf('Saving to %s...%s', getDirName($argv), PHP_EOL);
+
+    $path = realpath(getcwd() . '/' . getDirName($argv));
+
     foreach ($repos as $repoName) {
-        echo $repoName, PHP_EOL;
+        printf('Downloading %s...', $repoName);
+
+        if (downloadArchive($username, $repoName, $path)) {
+            echo ' Done.', PHP_EOL;
+        } else {
+            echo ' Failed.', PHP_EOL;
+            break;
+        }
     }
 }
 
